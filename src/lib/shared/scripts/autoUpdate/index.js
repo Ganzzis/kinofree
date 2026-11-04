@@ -79,6 +79,10 @@ export default async function autoUpdate() {
 
 		await cleanupServiceWorkers();
 
+		// iOS updates are installed through the user's signing/distribution process.
+		const { getPlatform } = await import('./platform.js');
+		if (getPlatform(navigator) === 'ios') return;
+
 		if (isAndroid()) {
 			await updateAndroid();
 		} else {

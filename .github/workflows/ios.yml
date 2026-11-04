@@ -1,0 +1,43 @@
+name: iOS unsigned
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/ios-tauri]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: brew install xcodegen
+      - run: npm ci
+      - run: node --test scripts/ios-platform.test.mjs
+      - name: Initialize Xcode project without a signing identity
+        run: npm run tauri -- ios init --ci
+      - name: Build unsigned device application
+        run: npm run tauri -- ios build --ci --target aarch64 --no-sign
+      - name: Package application for later signing
+        run: bash scripts/package-ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KinoFree-ios-unsigned-${{ github.sha }}
+          path: work/ios-export/
+          if-no-files-found: error
+          retention-days: 14
